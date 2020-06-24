@@ -1,4 +1,6 @@
 import os
+import re
+import textwrap
 
 
 def getkey():
@@ -47,13 +49,30 @@ def getnext(key, files):
     return p
 
 
+def splittweet(tweet):
+    if len(tweet) <= 270:
+        tweets = [tweet]
+    else:
+        tweets = re.split('(?<=[.!?—])[ —]+', tweet)
+        newarr = []
+        for t in tweets:
+            if len(t) <= 270:
+                newarr.append(t)
+            else:
+                wrapped = textwrap.wrap(t, 270, break_long_words=False)
+                newarr += wrapped
+        tweets = newarr
+    return tweets
+
+
 def tweet():
     key = getkey()
     files = os.listdir('all')
     files.sort()
     next = getnext(key, files)
     updatekey(key, files)
-    print(next)
+    next = splittweet(next)
+    print(next, len(next))
 
 
 if __name__ == "__main__":
