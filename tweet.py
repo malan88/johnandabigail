@@ -189,7 +189,11 @@ def main(nowait=False):
         content = getnext(key, files)
         content = splittweet(content)
         idx = 0
-        sid = tweet(content[idx])
+        fnum, pnum = splitkey(key)
+        if pnum > 0:
+            sid = tweet(content[idx], current_tweet['sid'])
+        else:
+            sid = tweet(content[idx])
         key = incrementkey(key, files)
         updatekey(key)
         update_dynamo(content, idx+1, sid)
