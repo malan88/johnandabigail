@@ -80,22 +80,29 @@ def splittweet(tweet):
     return tweets
 
 
-def tweet():
+def dynamo_tweet(tweet):
+    table = gettable()
+    table.update_item(
+        Key={'id': 1},
+        UpdateExpression="set tweet=:k",
+        ExpressionAttributeValues={
+            ':k': tweet
+        }
+    )
+
+
+def tweet(test=False):
     key = getkey()
     files = os.listdir('all')
     files.sort()
     next = getnext(key, files)
     updatekey(key, files)
     next = splittweet(next)
-    table = gettable()
-    table.update_item(
-        Key={'id': 1},
-        UpdateExpression="set tweet=:k",
-        ExpressionAttributeValues={
-            ':k': next
-        }
-    )
-
+    if test:
+        dynamo_tweet(next)
+    else:
+        for t in next:
+            print(t)
 
 
 if __name__ == "__main__":
