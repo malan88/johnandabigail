@@ -189,7 +189,7 @@ def main(nowait=False):
     current_tweet = fix_current_tweet(get_current_tweet())
     tweeted = False
 
-    if current_tweet['idx'] + 1 < len(current_tweet['tweet']):
+    if current_tweet['idx'] + 1 <= len(current_tweet['tweet']):
         # The current tweet is still live, that is to say: we're still tweeting
         # one long paragraph
         content = current_tweet['tweet']
