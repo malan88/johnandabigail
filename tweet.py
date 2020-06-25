@@ -119,6 +119,7 @@ def tweet(test=False, dynamodb=False):
         for t in next:
             print(t)
             print("Tweet away, captain.")
+    return next
 
 
 if __name__ == "__main__":
