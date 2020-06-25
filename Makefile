@@ -1,2 +1,2 @@
 build:
-	zip lambda.zip lambda_function.py __init__.py list.json tweet.py
+	zip -r lambda.zip * -x __pycache__ .git .gitignore
