@@ -1,20 +1,14 @@
-import re
-import textwrap
-import boto3
-import time
-import urllib3
-import json
-import argparse
-import tweepy
-import os
-import math
-import sys
+import re, time, json, os, math, sys
+import textwrap, argparsae
+import boto3, urllib3, tweepy
+from tweepy import RateLimitError, TweepError
 
 TABLE = 'adams-family'
 LETTERS = 'https://johnandabigail.netlify.app/'
 TIME_BETWEEN_TWEETS = 60 * 10
 
 def gettable():
+    """Just get the dynamodb table."""
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table(TABLE)
     return table
@@ -41,6 +35,7 @@ def incrementkey(key, files):
 
 
 def updatekey(key):
+    """Update the key in the dynamodb table with `key`"""
     table = gettable()
     table.update_item(
         Key={'id': 0},
@@ -65,6 +60,7 @@ def getparagraphs(f):
 
 
 def getfiles():
+    """Get the file list from the json list, prepend the url for the repo."""
     with open('list.json', 'rt') as fin:
         ls = json.load(fin)
     links = []
@@ -75,6 +71,7 @@ def getfiles():
 
 
 def getnext(key, files):
+    """Get the next tweet paragraph"""
     fnum, pnum = splitkey(key)
     f = files[fnum]
     paragraphs = getparagraphs(f)
@@ -83,6 +80,7 @@ def getnext(key, files):
 
 
 def splittweet(tweet):
+    """Split a paragraph into an array for tweeting"""
     if len(tweet) <= 270:
         tweets = [tweet]
     else:
@@ -99,12 +97,14 @@ def splittweet(tweet):
 
 
 def get_current_tweet():
+    """Get the current tweet info"""
     table = gettable()
     resp = table.get_item(Key={'id': 1})
     return resp['Item']
 
 
 def update_dynamo(lines, idx, sid=None):
+    """Update the current_tweet data in dynamodb"""
     table = gettable()
     table.update_item(
         Key={'id': 1},
@@ -119,6 +119,7 @@ def update_dynamo(lines, idx, sid=None):
 
 
 def tweet(tweet, sid=None):
+    """Send out a tweet."""
     auth = tweepy.OAuthHandler(
         os.environ['TWITTER_CONSUMER_KEY'],
         os.environ['TWITTER_CONSUMER_SECRET_KEY']
@@ -141,12 +142,16 @@ def tweet(tweet, sid=None):
 
 
 def fix_current_tweet(current_tweet):
+    """Simple helper function that doesn't even seem to work perfectly, for
+    generating the current_tweet dictionary.
+    """
     if not 'idx' in current_tweet:
         current_tweet['idx'] = len(current_tweet['tweet'])
     else:
+        # idx needs to not be a Decimal
         current_tweet['idx'] = int(current_tweet['idx'])
     if not 'sid' in current_tweet:
-        current_tweet['sid'] = nosid
+        current_tweet['sid'] = 'nosid'
     if not 'timelastsent' in current_tweet:
         current_tweet['timelastsent'] = time.time() - 10 * 60
     else:
@@ -155,6 +160,7 @@ def fix_current_tweet(current_tweet):
 
 
 def check_paragraph(key):
+    """Companion to set_paragraph, just check if it exists."""
     try:
         files = getfiles()
         p = getnext(key, files)
@@ -166,6 +172,9 @@ def check_paragraph(key):
 
 
 def set_paragraph(key):
+    """To reset, or set the paragraph first check that it exists, then set it,
+    then update the dynamo to bypass the paragraph continuation switch in main()
+    """
     good = check_paragraph(key)
     if good:
         updatekey(key)
@@ -173,10 +182,15 @@ def set_paragraph(key):
 
 
 def main(nowait=False):
+    """This is the main route. Gets current_tweet data and uses it to determine
+    what to tweet.
+    """
     current_tweet = fix_current_tweet(get_current_tweet())
     tweeted = False
 
     if current_tweet['idx'] + 1 < len(current_tweet['tweet']):
+        # The current tweet is still live, that is to say: we're still tweeting
+        # one long paragraph
         content = current_tweet['tweet']
         idx = current_tweet['idx']
         sid = current_tweet['sid']
@@ -184,14 +198,19 @@ def main(nowait=False):
         update_dynamo(content, idx+1, sid)
         tweeted = True
     elif nowait or time.time() - current_tweet['timelastsent'] >= TIME_BETWEEN_TWEETS:
+        # This is a new paragraph
         key = getkey()
         files = getfiles()
         content = getnext(key, files)
         content = splittweet(content)
         idx = 0
         fnum, pnum = splitkey(key)
-        if pnum > 0:
-            sid = tweet(content[idx], current_tweet['sid'])
+        sid = current_tweet['sid']
+        if pnum > 0 or sid != 'nosid':
+            # only tweet without the sid (that is to say the only time you're
+            # not creating a thread) is when you are starting a new letter
+            # (pnum=0)
+            sid = tweet(content[idx], sid)
         else:
             sid = tweet(content[idx])
         key = incrementkey(key, files)
