@@ -1,5 +1,5 @@
 import re, time, json, os, math, sys
-import textwrap, argparsae
+import textwrap, argparse
 import boto3, urllib3, tweepy
 from tweepy import RateLimitError, TweepError
 
@@ -87,6 +87,7 @@ def splittweet(tweet):
         tweets = re.split('(?<=[.!?—])[ —]+', tweet)
         newarr = []
         for t in tweets:
+            # check to make sure each tweet is under 270, otherwise wrap it.
             if len(t) <= 270:
                 newarr.append(t)
             else:
