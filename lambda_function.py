@@ -1,5 +1,5 @@
 import json
-from tweet import tweet
+from tweet import main
 
 def lambda_handler(event, context):
     success, tw = main()
