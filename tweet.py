@@ -1,12 +1,20 @@
 import os
 import re
 import textwrap
+import boto3
 
+TABLE='adams-family'
+
+def gettable():
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table(TABLE)
+    return table
 
 def getkey():
     """Get the key as a string"""
-    with open('key.txt', 'rt') as fin:
-        key = fin.read()
+    table = gettable()
+    resp = table.get_item(Key={'id': 0})
+    key = resp['Item']['k']
     return key
 
 
@@ -23,9 +31,15 @@ def incrementkey(key, files):
 
 
 def updatekey(key, files):
+    table = gettable()
     key = incrementkey(key, files)
-    with open('key.txt', 'wt') as fout:
-        fout.write(key)
+    table.update_item(
+        Key={'id': 0},
+        UpdateExpression="set k=:k",
+        ExpressionAttributeValues={
+            ':k': key
+        }
+    )
 
 
 def splitkey(key):
@@ -72,7 +86,15 @@ def tweet():
     next = getnext(key, files)
     updatekey(key, files)
     next = splittweet(next)
-    print(next, len(next))
+    table = gettable()
+    table.update_item(
+        Key={'id': 1},
+        UpdateExpression="set tweet=:k",
+        ExpressionAttributeValues={
+            ':k': next
+        }
+    )
+
 
 
 if __name__ == "__main__":
