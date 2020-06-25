@@ -1,15 +1,20 @@
-import os
 import re
 import textwrap
 import boto3
 import time
+import urllib3
+import json
+import argparse
 
 TABLE='adams-family'
+LETTERS='https://johnandabigail.netlify.app/'
+
 
 def gettable():
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table(TABLE)
     return table
+
 
 def getkey():
     """Get the key as a string"""
@@ -51,9 +56,19 @@ def splitkey(key):
 
 def getparagraphs(f):
     """Get all the paragraphs as a list without empty strings."""
-    with open('all/' + f, 'rt') as fin:
-        paragraphs = fin.readlines()
+    http = urllib3.PoolManager()
+    paragraphs = http.request('GET', f).data.decode('utf-8').splitlines()
     return list(filter(None, map(str.strip, paragraphs)))
+
+
+def getfiles():
+    with open('list.json', 'rt') as fin:
+        ls = json.load(fin)
+    links = []
+    for f in ls:
+        links.append(LETTERS + f)
+    links.sort()
+    return links
 
 
 def getnext(key, files):
@@ -91,22 +106,33 @@ def dynamo_tweet(tweet):
     )
 
 
-def tweet(test=False):
+def tweet(test=False, dynamodb=False):
     key = getkey()
-    files = os.listdir('all')
-    files.sort()
+    files = getfiles()
     next = getnext(key, files)
     updatekey(key, files)
     next = splittweet(next)
-    if test:
+    if dynamodb:
         dynamo_tweet(next)
-    else:
+        print("Tweet away, captain.")
+    elif test:
         for t in next:
             print(t)
+            print("Tweet away, captain.")
 
 
 if __name__ == "__main__":
-    while True:
-        tweet()
-        print("Tweet away, Captain.")
-        time.sleep(10*60)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-l", "--loop", help="Loop every 10 minutes to tweet",
+                        action="store_true")
+    parser.add_argument("-t", "--test",
+                        help="Just test tweet by printing to stdout",
+                        action="store_true")
+    parser.add_argument("-d", "--dynamodb", help="Update dynamodb for testing",
+                        action="store_true")
+    args = parser.parse_args()
+    if args.loop:
+        while True:
+            tweet(args.test, args.dynamodb)
+    else:
+        tweet(args.test, args.dynamodb)
