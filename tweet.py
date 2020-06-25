@@ -101,5 +101,5 @@ def tweet():
 if __name__ == "__main__":
     while True:
         tweet()
-        print('Tweeted that bitch!')
+        print("Tweet away, Captain.")
         time.sleep(10*60)
