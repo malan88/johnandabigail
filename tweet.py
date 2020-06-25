@@ -5,10 +5,14 @@ import time
 import urllib3
 import json
 import argparse
+import tweepy
+import os
+import math
+import sys
 
-TABLE='adams-family'
-LETTERS='https://johnandabigail.netlify.app/'
-
+TABLE = 'adams-family'
+LETTERS = 'https://johnandabigail.netlify.app/'
+TIME_BETWEEN_TWEETS = 60 * 10
 
 def gettable():
     dynamodb = boto3.resource('dynamodb')
@@ -36,9 +40,8 @@ def incrementkey(key, files):
     return f'{fnum}:{pnum}'
 
 
-def updatekey(key, files):
+def updatekey(key):
     table = gettable()
-    key = incrementkey(key, files)
     table.update_item(
         Key={'id': 0},
         UpdateExpression="set k=:k",
@@ -95,45 +98,119 @@ def splittweet(tweet):
     return tweets
 
 
-def dynamo_tweet(tweet):
+def get_current_tweet():
+    table = gettable()
+    resp = table.get_item(Key={'id': 1})
+    return resp['Item']
+
+
+def update_dynamo(lines, idx, sid=None):
     table = gettable()
     table.update_item(
         Key={'id': 1},
-        UpdateExpression="set tweet=:k",
+        UpdateExpression="set tweet=:k, idx=:i, timelastsent=:t, sid=:s",
         ExpressionAttributeValues={
-            ':k': tweet
+            ':k': lines,
+            ':i': idx,
+            ':t': int(time.time()),
+            ':s': str(sid)
         }
     )
 
 
-def tweet(test=False, dynamodb=False):
-    key = getkey()
-    files = getfiles()
-    next = getnext(key, files)
-    updatekey(key, files)
-    next = splittweet(next)
-    if dynamodb:
-        dynamo_tweet(next)
-        print("Tweet away, captain.")
-    elif test:
-        for t in next:
-            print(t)
-            print("Tweet away, captain.")
-    return next
+def tweet(tweet, sid=None):
+    auth = tweepy.OAuthHandler(
+        os.environ['TWITTER_CONSUMER_KEY'],
+        os.environ['TWITTER_CONSUMER_SECRET_KEY']
+    )
+    auth.set_access_token(
+        os.environ['TWITTER_ACCESS_TOKEN'],
+        os.environ['TWITTER_ACCESS_SECRET']
+    )
+    api = tweepy.API(auth)
+    try:
+        if sid:
+            status = api.update_status(tweet, in_reply_to_status_id=sid)
+        else:
+            status = api.update_status(tweet)
+    except RateLimitError:
+        sys.exit('Hit a rate limit')
+    except TweepError:
+        sys.exit(TweepError)
+    return status.id
+
+
+def fix_current_tweet(current_tweet):
+    if not 'idx' in current_tweet:
+        current_tweet['idx'] = len(current_tweet['tweet'])
+    else:
+        current_tweet['idx'] = int(current_tweet['idx'])
+    if not 'sid' in current_tweet:
+        current_tweet['sid'] = nosid
+    if not 'timelastsent' in current_tweet:
+        current_tweet['timelastsent'] = time.time() - 10 * 60
+    else:
+        current_tweet['timelastsent'] = float(current_tweet['timelastsent'])
+    return current_tweet
+
+
+def check_paragraph(key):
+    try:
+        files = getfiles()
+        p = getnext(key, files)
+    except KeyError:
+        print('wah wah wah')
+        print('key bad')
+        return False
+    return True
+
+
+def set_paragraph(key):
+    good = check_paragraph(key)
+    if good:
+        updatekey(key)
+        update_dynamo([], 1000, 'nosid')
+
+
+def main(nowait=False):
+    current_tweet = fix_current_tweet(get_current_tweet())
+
+    if current_tweet['idx'] + 1 < len(current_tweet['tweet']):
+        content = current_tweet['tweet']
+        idx = current_tweet['idx']
+        sid = current_tweet['sid']
+        sid = tweet(content[idx], sid)
+        update_dynamo(content, idx+1, sid)
+    elif nowait or time.time() - current_tweet['timelastsent'] >= TIME_BETWEEN_TWEETS:
+        key = getkey()
+        files = getfiles()
+        content = getnext(key, files)
+        content = splittweet(content)
+        idx = 0
+        sid = tweet(content[idx])
+        key = incrementkey(key, files)
+        updatekey(key)
+        update_dynamo(content, idx+1, sid)
+
+    current_tweet = fix_current_tweet(get_current_tweet())
+    return current_tweet
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-l", "--loop", help="Loop every 10 minutes to tweet",
                         action="store_true")
-    parser.add_argument("-t", "--test",
-                        help="Just test tweet by printing to stdout",
+    parser.add_argument("-w", "--nowait",
+                        help="Don't wait between tweets, for testing purposes",
                         action="store_true")
-    parser.add_argument("-d", "--dynamodb", help="Update dynamodb for testing",
-                        action="store_true")
+    parser.add_argument("-p", "--paragraph", help="Set the fnum:pnum",
+                        action="store", type=str)
     args = parser.parse_args()
-    if args.loop:
+    if args.paragraph:
+        set_paragraph(args.paragraph)
+    elif args.loop:
         while True:
-            tweet(args.test, args.dynamodb)
+            main(args.nowait)
+            time.sleep(60*10)
     else:
-        tweet(args.test, args.dynamodb)
+        print(main(args.nowait))
