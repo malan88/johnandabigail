@@ -174,6 +174,7 @@ def set_paragraph(key):
 
 def main(nowait=False):
     current_tweet = fix_current_tweet(get_current_tweet())
+    tweeted = False
 
     if current_tweet['idx'] + 1 < len(current_tweet['tweet']):
         content = current_tweet['tweet']
@@ -181,6 +182,7 @@ def main(nowait=False):
         sid = current_tweet['sid']
         sid = tweet(content[idx], sid)
         update_dynamo(content, idx+1, sid)
+        tweeted = True
     elif nowait or time.time() - current_tweet['timelastsent'] >= TIME_BETWEEN_TWEETS:
         key = getkey()
         files = getfiles()
@@ -191,9 +193,10 @@ def main(nowait=False):
         key = incrementkey(key, files)
         updatekey(key)
         update_dynamo(content, idx+1, sid)
+        tweeted = True
 
     current_tweet = fix_current_tweet(get_current_tweet())
-    return current_tweet
+    return tweeted, current_tweet
 
 
 if __name__ == "__main__":
