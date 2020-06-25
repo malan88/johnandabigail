@@ -208,7 +208,7 @@ def main(nowait=False):
         idx = 0
         fnum, pnum = splitkey(key)
         sid = current_tweet['sid']
-        if pnum > 0 or sid != 'nosid':
+        if pnum > 0 and sid != 'nosid':
             # only tweet without the sid (that is to say the only time you're
             # not creating a thread) is when you are starting a new letter
             # (pnum=0)
