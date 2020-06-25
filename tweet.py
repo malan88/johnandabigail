@@ -2,6 +2,7 @@ import os
 import re
 import textwrap
 import boto3
+import time
 
 TABLE='adams-family'
 
@@ -98,4 +99,7 @@ def tweet():
 
 
 if __name__ == "__main__":
-    tweet()
+    while True:
+        tweet()
+        print('Tweeted that bitch!')
+        time.sleep(10*60)
