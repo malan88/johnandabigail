@@ -5,7 +5,7 @@ from tweepy import RateLimitError, TweepError
 
 TABLE = 'adams-family'
 LETTERS = 'https://johnandabigail.netlify.app/'
-TIME_BETWEEN_TWEETS = 60 * 10
+TIME_BETWEEN_TWEETS = 60 * 10 - 10
 
 def gettable():
     """Just get the dynamodb table."""
