@@ -138,8 +138,6 @@ def tweet(tweet, sid=None):
             status = api.update_status(tweet)
     except RateLimitError:
         sys.exit('Hit a rate limit')
-    except TweepError:
-        sys.exit(TweepError)
     return status.id
 
 
