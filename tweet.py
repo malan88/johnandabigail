@@ -84,17 +84,17 @@ def splittweet(tweet):
     if len(tweet) <= 270:
         tweets = [tweet]
     else:
-        tweets = textwrap.wrap(tweet, 270, break_long_words=False)
-        #tweets = re.split('(?<=[.!?—])[ —]+', tweet)
-        #newarr = []
-        #for t in tweets:
-        #    # check to make sure each tweet is under 270, otherwise wrap it.
-        #    if len(t) <= 270:
-        #        newarr.append(t)
-        #    else:
-        #        wrapped = textwrap.wrap(t, 270, break_long_words=False)
-        #        newarr += wrapped
-        #tweets = newarr
+        #tweets = textwrap.wrap(tweet, 270, break_long_words=False)
+        tweets = re.split('(?<=[.!?—])[ —]+', tweet)
+        newarr = []
+        for t in tweets:
+            # check to make sure each tweet is under 270, otherwise wrap it.
+            if len(t) <= 270:
+                newarr.append(t)
+            else:
+                wrapped = textwrap.wrap(t, 270, break_long_words=False)
+                newarr += wrapped
+        tweets = newarr
     return tweets
 
 
