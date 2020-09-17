@@ -139,13 +139,12 @@ def gettweet():
     return {'tweet': tweet, 'key': key, 'sid': sid, 'time': float(timelastsent)}
 
 
-def main(p):
+def main(p=False):
     """This is the main route. Gets tweet data and uses it to determine
     what to tweet.
     """
     tw = gettweet()
     sid = 'nosid' # placeholder in case we're updating with p
-    print(tw)
     if p:
         print(tw['tweet'])
     else:
@@ -153,6 +152,8 @@ def main(p):
 
     updatekey(tw['key'])
     updatelastdata(sid)
+
+    return True, tw
 
 
 if __name__ == "__main__":
