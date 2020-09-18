@@ -131,7 +131,7 @@ def gettweet():
     lines = getlines(filename)
     tweet = lines[line]
     sid, timelastsent = getlastdata()
-    if line >= len(lines):
+    if line >= len(lines) - 1:
         # we're at the end of the file, so the next tweet should be the
         # beginning of a new thread
         sid = 'nosid'
