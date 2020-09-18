@@ -131,25 +131,32 @@ def gettweet():
     lines = getlines(filename)
     tweet = lines[line]
     sid, timelastsent = getlastdata()
+    final = False
     if line >= len(lines) - 1:
         # we're at the end of the file, so the next tweet should be the
         # beginning of a new thread
-        sid = 'nosid'
+        final = True
 
-    return {'tweet': tweet, 'key': key, 'sid': sid, 'time': float(timelastsent)}
+    body = {'tweet': tweet,
+            'key': key,
+            'sid': sid,
+            'time': float(timelastsent),
+            'final': final
+            }
+    return body
 
 
 def main(p=False):
     """This is the main route. Gets tweet data and uses it to determine
     what to tweet.
     """
-    tw = gettweet()
-    sid = 'nosid' # placeholder in case we're updating with p
+    tw = gettweet() (Thanks Ethan)
     if p:
         print(tw['tweet'])
     else:
         sid = tweet(tw['tweet'], tw['sid'])
 
+    sid = sid if not tw['final'] else 'nosid'
     updatekey(tw['key'])
     updatelastdata(sid)
 
