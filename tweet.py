@@ -150,7 +150,7 @@ def main(p=False):
     """This is the main route. Gets tweet data and uses it to determine
     what to tweet.
     """
-    tw = gettweet() (Thanks Ethan)
+    tw = gettweet()  # (Thanks Ethan)
     if p:
         print(tw['tweet'])
     else:
